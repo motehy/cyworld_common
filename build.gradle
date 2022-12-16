@@ -1,0 +1,95 @@
+buildscript {
+	ext {
+		springBootVersion = '2.3.9.RELEASE'
+    }
+	repositories {
+		mavenCentral()
+    	maven { url 'https://repo.spring.io/libs-milestone'}
+	}
+	dependencies {
+		classpath("org.springframework.boot:spring-boot-gradle-plugin:${springBootVersion}")
+	}
+}
+
+group 'com.cyworld'
+version '1.0-SNAPSHOT'
+
+apply plugin: 'java'
+apply plugin: 'idea'
+apply plugin: 'eclipse'
+apply plugin: 'org.springframework.boot'
+apply plugin: 'io.spring.dependency-management'
+
+targetCompatibility = '11'
+sourceCompatibility = '11'
+compileJava.options.encoding = 'UTF-8'
+
+repositories {
+    mavenCentral()
+}
+
+bootJar.enabled = false
+jar.enabled = true
+
+jar {
+	enabled = true
+	baseName = 'common'
+	version = ''
+}
+
+ext.profile = (!project.hasProperty('profile') || !profile) ? 'local' : profile
+
+dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter'
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-validation' //validation
+    implementation 'org.springframework.boot:spring-boot-starter-data-redis' //redis cache/session
+    implementation 'org.springframework.boot:spring-boot-starter-cache'
+    implementation 'org.springframework.session:spring-session-data-redis'//redis session
+
+    // for QueryDSL
+    implementation "com.querydsl:querydsl-jpa"
+    implementation "com.querydsl:querydsl-core"
+    annotationProcessor "com.querydsl:querydsl-apt:${dependencyManagement.importedProperties['querydsl.version']}:jpa" // querydsl JPAAnnotationProcessor 사용 지정
+    annotationProcessor "jakarta.persistence:jakarta.persistence-api:2.2.3"
+    annotationProcessor "jakarta.annotation:jakarta.annotation-api:1.3.5"
+
+    implementation "org.springdoc:springdoc-openapi-ui:1.5.2" //swagger
+
+    compileOnly 'org.projectlombok:lombok:1.18.18'
+	annotationProcessor 'org.projectlombok:lombok:1.18.18'
+
+	implementation 'org.apache.commons:commons-configuration2:2.6'
+}
+
+// querydsl 적용
+def generated='src/main/generated'
+sourceSets {
+    main.java.srcDirs += [ generated ]
+}
+
+tasks.withType(JavaCompile) {
+    options.annotationProcessorGeneratedSourcesDirectory = file(generated)
+}
+
+clean.doLast {
+    file(generated).deleteDir()
+}
+
+task subJarCopyForServer(dependsOn: build, group: 'build') {
+	doLast {
+		if ( "${profile}".indexOf('local') > -1 ) {	 //local 이면 복사
+				println file(">>>>>>> copy from build/libs/common.jar")
+				copy {
+				    from "build/libs/common.jar"
+			    	into "../front/src/comlib/"
+			    }
+				copy {
+				    from "build/libs/common.jar"
+			    	into "../admin/src/comlib/"
+			    }
+		}
+	}
+}
